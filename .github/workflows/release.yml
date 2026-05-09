@@ -288,18 +288,18 @@ jobs:
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
-      # Trusted publishing requires npm CLI >= 11.5.1; Node 22 ships
-      # with an older npm, so upgrade explicitly. Use npm publish (not
-      # pnpm publish) for the actual publish step — pnpm 9 predates
-      # OIDC trusted publishing support.
-      - name: Upgrade npm CLI for trusted publishing
-        run: npm install -g npm@latest
-
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
+      # Trusted publishing requires npm CLI >= 11.5.1; Node 22 ships
+      # with an older npm. Self-upgrading via `npm install -g npm@…`
+      # corrupts the runner's global install on hosted runners
+      # (MODULE_NOT_FOUND on internal helper modules). Run npm 11 via
+      # npx instead — it downloads to the cache and runs in-place,
+      # leaving the system npm untouched. OIDC env vars propagate.
+      # Use pnpm 9 for build (it predates OIDC support), npm for publish.
       - name: Publish to npm via trusted publishing (OIDC)
-        run: npm publish --access public --provenance
+        run: npx -y npm@11 publish --access public --provenance
 
       - name: Add publish summary
         env:

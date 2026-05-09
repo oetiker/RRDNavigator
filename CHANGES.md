@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Fixed
 - Bump dev dependencies (`happy-dom` 14 → 20.9, `esbuild` 0.21 → 0.28, `vitest` 1.6 → 4.1, `eslint` 9 → 10, `vite` pinned to 8) to clear Dependabot advisories. No effect on the published bundle or its consumers.
 - CI: drop `version: 9` from `pnpm/action-setup` invocations; the action now reads the pnpm version from `packageManager` in `package.json`, eliminating the version-mismatch error that broke every workflow run.
+- CI: run `npm publish` via `npx -y npm@11` rather than self-upgrading the runner's global npm. The in-place `npm install -g npm@latest` corrupts the global install on hosted runners (`MODULE_NOT_FOUND: 'promise-retry'`); npx-spawned npm bypasses the global install entirely while keeping OIDC trusted publishing intact.
 
 ## 0.1.0 - 2026-05-09
 ### New

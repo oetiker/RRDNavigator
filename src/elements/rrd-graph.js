@@ -189,7 +189,7 @@ class RrdGraph extends HTMLElement {
     }
   }
 
-  attributeChangedCallback(name, _old, _val) {
+  attributeChangedCallback(_name, _old, _val) {
     if (!this.isConnected) return;
     this._reconcile();
   }

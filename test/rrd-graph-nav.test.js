@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach } from "vitest";
 import "../src/elements/rrd-graph-nav.js";
-import { _reset, getGroup, update, subscribe } from "../src/core/state.js";
+import { _reset, getGroup, update } from "../src/core/state.js";
 
 function mount(html) {
   document.body.innerHTML = html;

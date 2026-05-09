@@ -37,3 +37,21 @@ describe("template engine", () => {
     expect(fn({ n: 2 })).toBe("2");
   });
 });
+
+describe("built-in formatters (after index import)", () => {
+  test("smokeping, iso, iso-local, smokeping-now, rrd are registered", async () => {
+    _resetFormatters();
+    await import("../src/index.js");
+    const fn = compile("a={{x:smokeping}}&b={{y:smokeping-now}}&c={{x:iso}}&d={{x:iso-local}}&e={{x:rrd}}");
+    const ctx = {
+      x: { epoch: Date.UTC(2026, 4, 9, 0, 18, 0) / 1000, isNow: false, tz: "Europe/Zurich" },
+      y: { epoch: Math.floor(Date.now() / 1000), isNow: true, tz: "UTC" }
+    };
+    const out = fn(ctx);
+    expect(out).toMatch(/a=2026-05-09\+02:18/);
+    expect(out).toMatch(/b=now/);
+    expect(out).toMatch(/c=2026-05-09T00:18:00/);
+    expect(out).toMatch(/d=2026-05-09T02:18:00/);
+    expect(out).toMatch(/e=\d+/);
+  });
+});

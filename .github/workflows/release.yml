@@ -208,7 +208,7 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: release-artifacts
           path: |
@@ -229,7 +229,7 @@ jobs:
           ref: ${{ needs.create-tag.outputs.version }}
 
       - name: Download artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           name: release-artifacts
           path: ./
@@ -254,7 +254,7 @@ jobs:
           cat release_notes_final.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.create-tag.outputs.version }}
           name: Release ${{ needs.create-tag.outputs.version_no_v }}

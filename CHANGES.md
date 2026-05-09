@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- CI: bump `actions/upload-artifact` (v5 → v7), `actions/download-artifact` (v5 → v8), and `softprops/action-gh-release` (v2 → v3) to clear the remaining "Node.js 20 actions are deprecated" warnings on release runs.
 
 ## 0.1.1 - 2026-05-09
 ### Changed

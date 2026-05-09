@@ -1,16 +1,55 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>RRDNavigator + SmokePing</title>
+<html><head><meta charset="utf-8"><title>RRDNavigator + SmokePing demo</title>
 <style>
   body { font: 14px sans-serif; max-width: 1300px; margin: 2em auto; padding: 0 1em; }
-  rrd-graph { width: 100%; aspect-ratio: 1300 / 240; border: 1px solid #ddd; }
+  h1 { font-size: 1.4em; }
+  .demo {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 1em;
+    margin: 1em 0;
+  }
+  rrd-graph {
+    width: 100%;
+    aspect-ratio: 1300 / 320;
+    background: #fafafa;
+  }
+  rrd-graph-nav { margin-bottom: 0.5em; }
+  pre { background: #f4f4f4; padding: 0.5em; border-radius: 3px; overflow-x: auto; }
 </style>
 </head><body>
-<h1>SmokePing target</h1>
-<rrd-graph-nav group="sp" presets="60m,12h,24h,7d,30d" initial-preset="24h"></rrd-graph-nav>
-<rrd-graph
+<h1>RRDNavigator — SmokePing live demo</h1>
+
+<p>Drag horizontally to pan. Drag vertically (mouse) or ctrl+wheel to zoom.
+   Pinch on touch devices. Double-click opens the current chart in a popup.
+   Buttons in the nav bar select preset ranges.</p>
+
+<div class="demo">
+  <rrd-graph-nav
+    group="sp"
+    presets="60m,3h,12h,24h,7d,30d"
+    initial-preset="3h"></rrd-graph-nav>
+
+  <rrd-graph
+    group="sp"
+    timezone="Europe/Zurich"
+    template="http://localhost:4265/smokeping.cgi?displaymode=a&start={{start:smokeping}}&end={{end:smokeping-now}}&target=Local.Localhost&width={{width}}"
+    auto-update></rrd-graph>
+</div>
+
+<p>The template URL uses the <code>smokeping</code> formatter for
+   <code>start</code> (renders as <code>YYYY-MM-DD+HH:mm</code> in the
+   configured timezone) and <code>smokeping-now</code> for <code>end</code>
+   (emits the literal <code>now</code> when the chart is following real time,
+   otherwise the same date format). <code>displaymode=a</code> tells
+   SmokePing to return the chart image directly rather than the HTML
+   navigator page.</p>
+
+<pre>&lt;rrd-graph
   group="sp"
   timezone="Europe/Zurich"
-  template="/smokeping.cgi?displaymode=n&start={{start:smokeping}}&end={{end:smokeping-now}}&target=Local.Localhost&width={{width}}"
-  auto-update></rrd-graph>
+  template="http://localhost:4265/smokeping.cgi?displaymode=a&amp;start={{start:smokeping}}&amp;end={{end:smokeping-now}}&amp;target=Local.Localhost&amp;width={{width}}"
+  auto-update&gt;&lt;/rrd-graph&gt;</pre>
+
 <script type="module" src="../dist/rrdnavigator.js"></script>
 </body></html>

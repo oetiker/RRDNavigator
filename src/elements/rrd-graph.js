@@ -232,7 +232,7 @@ class RrdGraph extends HTMLElement {
     const refreshThrottled = throttle(() => this._refreshImage(moveZoom), 120);
 
     const onPanMove = ({ dx, dy }) => {
-      const w = Math.max(1, this.clientWidth - parseFloat(this.getAttribute("canvas-padding") || "0"));
+      const w = Math.max(1, this.clientWidth - parseFloat(this.getAttribute("canvas-padding") || "100"));
       if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
         // vertical drag → zoom around pointer-origin x position
         const newRange = rangeCap(initialRange * Math.pow(1.02, dy));

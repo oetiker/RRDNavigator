@@ -66,7 +66,7 @@ describe("<rrd-graph> interaction", () => {
   });
 
   test("horizontal drag pans start", () => {
-    const el = mount('<rrd-graph template="x" initial-start="1000" initial-range="60" style="width:600px;height:200px"></rrd-graph>');
+    const el = mount('<rrd-graph template="x" initial-start="1000" initial-range="60" canvas-padding="0" style="width:600px;height:200px"></rrd-graph>');
     // simulate width
     Object.defineProperty(el, "clientWidth", { configurable: true, value: 600 });
     Object.defineProperty(el, "offsetWidth", { configurable: true, value: 600 });

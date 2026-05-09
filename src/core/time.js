@@ -52,9 +52,8 @@ export function startOf(epoch, unit, tz) {
     case "hour":   return epochFromParts({ ...p, minute: 0, second: 0 }, tz);
     case "day":    return epochFromParts({ ...p, hour: 0, minute: 0, second: 0 }, tz);
     case "week": {
-      // Week starts Monday in ISO; compute weekday via UTC of the day's local-midnight
       const dayStart = epochFromParts({ ...p, hour: 0, minute: 0, second: 0 }, tz);
-      const weekday = new Date(dayStart * 1000).getUTCDay(); // 0=Sun..6=Sat
+      const weekday = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay(); // 0=Sun..6=Sat
       const back = weekday === 0 ? 6 : weekday - 1;
       return dayStart - back * 86400;
     }
@@ -66,18 +65,29 @@ export function startOf(epoch, unit, tz) {
 
 export function endOf(epoch, unit, tz) {
   const start = startOf(epoch, unit, tz);
+  const p = formatEpoch(start, tz);
   switch (unit) {
-    case "minute": return start + 59;
-    case "hour":   return start + 3599;
-    case "day":    return start + 86399;
-    case "week":   return start + 7 * 86400 - 1;
+    case "minute": {
+      const next = epochFromParts({ ...p, minute: p.minute + 1 }, tz);
+      return next - 1;
+    }
+    case "hour": {
+      const next = epochFromParts({ ...p, hour: p.hour + 1, minute: 0, second: 0 }, tz);
+      return next - 1;
+    }
+    case "day": {
+      const next = epochFromParts({ ...p, day: p.day + 1, hour: 0, minute: 0, second: 0 }, tz);
+      return next - 1;
+    }
+    case "week": {
+      const next = epochFromParts({ ...p, day: p.day + 7, hour: 0, minute: 0, second: 0 }, tz);
+      return next - 1;
+    }
     case "month": {
-      const p = formatEpoch(start, tz);
       const nextMonth = epochFromParts({ year: p.year + (p.month === 12 ? 1 : 0), month: p.month === 12 ? 1 : p.month + 1, day: 1, hour: 0, minute: 0, second: 0 }, tz);
       return nextMonth - 1;
     }
     case "year": {
-      const p = formatEpoch(start, tz);
       const nextYear = epochFromParts({ year: p.year + 1, month: 1, day: 1, hour: 0, minute: 0, second: 0 }, tz);
       return nextYear - 1;
     }

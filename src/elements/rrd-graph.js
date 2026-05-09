@@ -1,5 +1,6 @@
 import { compile } from "../core/template.js";
 import { getGroup, subscribe, update } from "../core/state.js";
+import { attach as attachGestures } from "../core/gestures.js";
 
 const DURATION_RE = /^(\d+(?:\.\d+)?)\s*(s|m|h|d|w|M|y)?$/;
 const UNIT_SEC = { s: 1, m: 60, h: 3600, d: 86400, w: 7 * 86400, M: 30 * 86400, y: 365 * 86400 };
@@ -68,16 +69,12 @@ class RrdGraph extends HTMLElement {
     this._compiled = null;
     this._groupName = null;
     this._unsub = null;
+    this._detachGestures = null;
     this._loading = false;
-    this._skipped = false;
     this._lastInteraction = 0;
 
     this._img.addEventListener("load", () => {
       this._loading = false;
-      if (this._skipped) {
-        this._skipped = false;
-        this._refreshImage();
-      }
       this.dispatchEvent(new CustomEvent("rrd-load", {
         bubbles: true, composed: true, detail: { url: this._img.getAttribute("src") }
       }));
@@ -95,6 +92,8 @@ class RrdGraph extends HTMLElement {
   }
 
   disconnectedCallback() {
+    if (this._detachGestures) this._detachGestures();
+    this._detachGestures = null;
     if (this._unsub) this._unsub();
     this._unsub = null;
     // Reset so that re-connection re-initializes properly
@@ -166,6 +165,10 @@ class RrdGraph extends HTMLElement {
       });
     }
 
+    if (!this._detachGestures) {
+      this._detachGestures = this._wireGestures();
+    }
+
     this._refreshImage();
   }
 
@@ -204,15 +207,127 @@ class RrdGraph extends HTMLElement {
     };
     const url = this._compiled(ctx);
     if (!url) return;
-    if (this._loading) {
-      // A load is already in flight; note that we'll need another refresh once
-      // it completes, but go ahead and update the src so the browser cancels
-      // the old request and starts the new one immediately.
-      this._skipped = false; // the new src IS the latest state
-    }
     this._loading = true;
     this._img.setAttribute("src", url);
   }
+
+  _wireGestures() {
+    let initialStart = 0;
+    let initialRange = 0;
+    let pointerOriginRel = 0;
+    let interactionTimeout = null;
+    const setInteracting = () => {
+      this._lastInteraction = Date.now();
+      if (interactionTimeout) clearTimeout(interactionTimeout);
+      interactionTimeout = setTimeout(() => {
+        this._lastInteraction = 0;
+        this._clearGrid();
+        this._refreshImage(); // final update at zoom=1
+      }, 250);
+    };
+
+    const rangeCap = (r) => Math.max(10, Math.min(20 * 365 * 86400, r));
+    const moveZoom = parseFloat(this.getAttribute("move-zoom") || "1") || 1;
+
+    const refreshThrottled = throttle(() => this._refreshImage(moveZoom), 120);
+
+    const onPanMove = ({ dx, dy }) => {
+      const w = Math.max(1, this.clientWidth - parseFloat(this.getAttribute("canvas-padding") || "0"));
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10) {
+        // vertical drag → zoom around pointer-origin x position
+        const newRange = rangeCap(initialRange * Math.pow(1.02, dy));
+        const newStart = Math.round(initialStart + (initialRange - newRange) * pointerOriginRel);
+        update(this._groupName, { start: newStart, range: newRange }, "zoom");
+      } else {
+        const newStart = initialStart - Math.round(initialRange / w * dx);
+        update(this._groupName, { start: newStart, range: initialRange }, "pan");
+      }
+      this._paintGrid(initialStart, initialRange);
+      refreshThrottled();
+      setInteracting();
+    };
+
+    const onPanStart = ({ x }) => {
+      const state = getGroup(this._groupName);
+      initialStart = state.start;
+      initialRange = state.range;
+      const rect = this.getBoundingClientRect();
+      pointerOriginRel = (x - rect.left) / Math.max(1, rect.width);
+      this.setAttribute("_dragging", "");
+    };
+
+    const onPanEnd = () => {
+      this.removeAttribute("_dragging");
+      setInteracting();
+    };
+
+    const onZoom = ({ factor, anchorX }) => {
+      const state = getGroup(this._groupName);
+      const newRange = rangeCap(state.range / factor);
+      const rect = this.getBoundingClientRect();
+      const rel = anchorX / Math.max(1, rect.width);
+      const newStart = Math.round(state.start + (state.range - newRange) * rel);
+      update(this._groupName, { start: newStart, range: newRange }, "zoom");
+      this._paintGrid(state.start, state.range);
+      refreshThrottled();
+      setInteracting();
+    };
+
+    const onPinch = ({ factor, anchorX }) => onZoom({ factor, anchorX });
+
+    const onDoubleTap = () => {
+      const url = this._img.getAttribute("src");
+      if (url) window.open(url, "_blank", `width=${this.clientWidth + 10},height=${this.clientHeight + 10}`);
+    };
+
+    return attachGestures(this._canvas, { onPanStart, onPanMove, onPanEnd, onZoom, onPinch, onDoubleTap });
+  }
+
+  _paintGrid(initialStart, initialRange) {
+    const state = getGroup(this._groupName);
+    const w = this.clientWidth || 0;
+    const h = this.clientHeight || 0;
+    if (!w || !h) return;
+    this._canvas.width = w;
+    this._canvas.height = h;
+    if (typeof this._canvas.getContext !== "function") return;
+    const ctx = this._canvas.getContext("2d");
+    if (!ctx) return;
+    const skip = 100;
+    const xIncr = Math.max(1, Math.round(initialRange / state.range * skip));
+    const xOff = Math.round((w / state.range * (initialStart - state.start)) % xIncr);
+    const xWidth = Math.round(xIncr / 2);
+    const a = getComputedStyle(this).getPropertyValue("--rrd-grid-a") || "rgba(0,0,0,0.08)";
+    const b = getComputedStyle(this).getPropertyValue("--rrd-grid-b") || "rgba(255,255,255,0.08)";
+    ctx.clearRect(0, 0, w, h);
+    for (let x = -xIncr + xOff; x < w; x += xIncr) {
+      ctx.fillStyle = a; ctx.fillRect(x, 0, xWidth, h);
+      ctx.fillStyle = b; ctx.fillRect(x + xWidth, 0, xWidth, h);
+    }
+  }
+
+  _clearGrid() {
+    if (typeof this._canvas.getContext !== "function") return;
+    const ctx = this._canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+  }
+}
+
+function throttle(fn, ms) {
+  let last = 0;
+  let queued = null;
+  return function (...args) {
+    const now = Date.now();
+    const elapsed = now - last;
+    if (elapsed >= ms) {
+      last = now;
+      fn(...args);
+    } else {
+      if (queued) clearTimeout(queued);
+      queued = setTimeout(() => { last = Date.now(); queued = null; fn(...args); }, ms - elapsed);
+    }
+  };
 }
 
 customElements.define("rrd-graph", RrdGraph);

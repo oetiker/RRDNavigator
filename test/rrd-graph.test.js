@@ -58,3 +58,54 @@ describe("<rrd-graph> rendering", () => {
     expect(handler.mock.calls[0][0].detail).toMatchObject({ start: 500, range: 30, source: "set" });
   });
 });
+
+describe("<rrd-graph> interaction", () => {
+  beforeEach(() => {
+    _reset();
+    document.body.innerHTML = "";
+  });
+
+  test("horizontal drag pans start", () => {
+    const el = mount('<rrd-graph template="x" initial-start="1000" initial-range="60" style="width:600px;height:200px"></rrd-graph>');
+    // simulate width
+    Object.defineProperty(el, "clientWidth", { configurable: true, value: 600 });
+    Object.defineProperty(el, "offsetWidth", { configurable: true, value: 600 });
+    Object.defineProperty(el, "clientHeight", { configurable: true, value: 200 });
+    Object.defineProperty(el, "offsetHeight", { configurable: true, value: 200 });
+    const canvas = el.shadowRoot.querySelector("canvas");
+    canvas.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 300, clientY: 100, pointerId: 1 }));
+    document.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 200, clientY: 100, pointerId: 1 }));
+    document.dispatchEvent(new MouseEvent("pointerup",   { bubbles: true, clientX: 200, clientY: 100, pointerId: 1 }));
+    // 100px right-to-left drag on 600px wide / 60s range = +10s start
+    const state = getGroup(el._groupName);
+    expect(state.start).toBeCloseTo(1010, 0);
+  });
+
+  test("ctrl+wheel zooms", () => {
+    const el = mount('<rrd-graph template="x" initial-start="1000" initial-range="60" style="width:600px;height:200px"></rrd-graph>');
+    Object.defineProperty(el, "clientWidth", { configurable: true, value: 600 });
+    Object.defineProperty(el, "offsetWidth", { configurable: true, value: 600 });
+    Object.defineProperty(el, "clientHeight", { configurable: true, value: 200 });
+    Object.defineProperty(el, "offsetHeight", { configurable: true, value: 200 });
+    const canvas = el.shadowRoot.querySelector("canvas");
+    const wheelEvt = new WheelEvent("wheel", { bubbles: true, cancelable: true, ctrlKey: true, deltaY: -200, clientX: 300, clientY: 100 });
+    // happy-dom's WheelEvent doesn't inherit MouseEvent so ctrlKey isn't set from init; patch it.
+    if (!wheelEvt.ctrlKey) Object.defineProperty(wheelEvt, "ctrlKey", { value: true, configurable: true });
+    canvas.dispatchEvent(wheelEvt);
+    const state = getGroup(el._groupName);
+    expect(state.range).toBeLessThan(60);
+    expect(state.range).toBeGreaterThan(0);
+  });
+
+  test("dblclick opens current src in a new window", () => {
+    const el = mount('<rrd-graph template="img.png?s={{start}}" initial-start="1000" initial-range="60"></rrd-graph>');
+    const opened = [];
+    const realOpen = window.open;
+    window.open = (url) => { opened.push(url); return null; };
+    const canvas = el.shadowRoot.querySelector("canvas");
+    canvas.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    window.open = realOpen;
+    expect(opened.length).toBe(1);
+    expect(opened[0]).toMatch(/img\.png\?s=1000/);
+  });
+});

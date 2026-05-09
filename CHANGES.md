@@ -10,11 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### New
 
 ### Changed
-
-### Fixed
-
-## 0.1.1 - 2026-05-09
-### Changed
 - npm releases now publish via [trusted publishing (OIDC)](https://docs.npmjs.com/trusted-publishers) with build provenance attestation — no long-lived `NPM_TOKEN` is held in GitHub.
 
 ### Fixed

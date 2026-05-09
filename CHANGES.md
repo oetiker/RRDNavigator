@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### New
+
+### Changed
+- npm releases now publish via [trusted publishing (OIDC)](https://docs.npmjs.com/trusted-publishers) with build provenance attestation — no long-lived `NPM_TOKEN` is held in GitHub.
+
+### Fixed
+- Bump dev dependencies (`happy-dom` 14 → 20.9, `esbuild` 0.21 → 0.28, `vitest` 1.6 → 4.1, `eslint` 9 → 10, `vite` pinned to 8) to clear Dependabot advisories. No effect on the published bundle or its consumers.
+
+## 0.1.0 - 2026-05-09
+### New
 - `<rrd-graph>` custom element: server-rendered chart image becomes a
   pan/zoom widget with pointer, wheel, and pinch gestures.
 - `<rrd-graph-nav>` custom element: preset range buttons, optional
@@ -22,7 +31,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Follow-now auto-update interval for live charts.
 - esbuild driver producing both `dist/rrdnavigator.js` (debuggable ESM)
   and `dist/rrdnavigator.min.js` (minified).
-
-### Changed
-
-### Fixed

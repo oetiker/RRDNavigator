@@ -292,16 +292,22 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
           registry-url: 'https://registry.npmjs.org'
 
-      - run: pnpm install --frozen-lockfile
+      # Trusted publishing requires npm CLI >= 11.5.1; Node 22 ships
+      # with an older npm, so upgrade explicitly. Use npm publish (not
+      # pnpm publish) for the actual publish step — pnpm 9 predates
+      # OIDC trusted publishing support.
+      - name: Upgrade npm CLI for trusted publishing
+        run: npm install -g npm@latest
 
-      - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: pnpm publish --no-git-checks --access public --provenance
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Publish to npm via trusted publishing (OIDC)
+        run: npm publish --access public --provenance
 
       - name: Add publish summary
         env:

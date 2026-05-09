@@ -9,6 +9,21 @@ image (PNG, SVG, anything `<img>` accepts) into a pan/zoom widget;
 Zero runtime dependencies. Modern browsers (Chrome/Firefox/Safari/Edge, last
 ~2 years).
 
+## Install
+
+```sh
+pnpm add @oetiker/rrdnavigator
+# or
+npm install @oetiker/rrdnavigator
+```
+
+Or use it straight from a CDN with no build step:
+
+```html
+<script type="module"
+  src="https://cdn.jsdelivr.net/npm/@oetiker/rrdnavigator/dist/rrdnavigator.min.js"></script>
+```
+
 ## Quick start
 
 ```html

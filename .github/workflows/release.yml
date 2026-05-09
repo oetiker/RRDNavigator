@@ -1,0 +1,314 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'bugfix'
+        type: choice
+        options:
+          - bugfix   # Increment patch (x.y.Z)
+          - feature  # Increment minor (x.Y.0)
+          - major    # Increment major (X.0.0)
+
+env:
+  PROJECT_NAME: rrdnavigator
+
+permissions:
+  contents: write
+  id-token: write   # required for npm provenance
+
+jobs:
+  check-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check branch
+        run: |
+          set -euo pipefail
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          if [[ "$CURRENT_BRANCH" != "main" ]]; then
+            echo "::error title=Wrong Branch::Release can only be run from main. Current: $CURRENT_BRANCH"
+            exit 1
+          fi
+          echo "✅ Running on main branch" >> $GITHUB_STEP_SUMMARY
+
+  verify:
+    needs: check-branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  create-tag:
+    runs-on: ubuntu-latest
+    needs: verify
+    outputs:
+      version: ${{ steps.generate_version.outputs.version }}
+      version_no_v: ${{ steps.generate_version.outputs.version_no_v }}
+      release_date: ${{ steps.generate_version.outputs.release_date }}
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate new version
+        id: generate_version
+        run: |
+          set -euo pipefail
+          echo "::group::Version generation"
+          git fetch --tags
+          LATEST_TAG=$(git describe --tags --match 'v[0-9]*.[0-9]*.[0-9]*' --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Latest tag: $LATEST_TAG"
+
+          MAJOR=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+).*/\1/')
+          MINOR=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+).*/\2/')
+          PATCH=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+).*/\3/')
+
+          case "${{ github.event.inputs.release_type }}" in
+            major)   MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
+            feature) MINOR=$((MINOR+1)); PATCH=0 ;;
+            bugfix)  PATCH=$((PATCH+1)) ;;
+          esac
+
+          NEW_VERSION="v$MAJOR.$MINOR.$PATCH"
+          echo "::notice title=New Version::$NEW_VERSION (from $LATEST_TAG)"
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "version_no_v=$MAJOR.$MINOR.$PATCH" >> $GITHUB_OUTPUT
+          echo "release_date=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+          {
+            echo "## Version Information"
+            echo "- **Previous:** $LATEST_TAG"
+            echo "- **New:** $NEW_VERSION"
+            echo "- **Type:** ${{ github.event.inputs.release_type }}"
+          } >> $GITHUB_STEP_SUMMARY
+          echo "::endgroup::"
+
+      - name: Update CHANGES.md
+        env:
+          VERSION_NO_V: ${{ steps.generate_version.outputs.version_no_v }}
+          RELEASE_DATE: ${{ steps.generate_version.outputs.release_date }}
+        run: |
+          set -euo pipefail
+          perl -i -e '
+            use strict;
+            use warnings;
+            my $content = do { local $/; <> };
+            my ($before, $unreleased_section, $after) =
+              $content =~ /^(.*?)(## \[Unreleased\].*?)(?=^## \d|\Z)(.*)/ms;
+
+            my ($has_new, $has_changed, $has_fixed) = (0, 0, 0);
+            my ($new_content, $changed_content, $fixed_content) = ("", "", "");
+
+            if ($unreleased_section =~ /### New(.*?)(?=^###|\Z)/ms) {
+              my $s = $1; $s =~ s/^\s+|\s+$//g;
+              if ($s) { $has_new = 1; $new_content = $s; }
+            }
+            if ($unreleased_section =~ /### Changed(.*?)(?=^###|\Z)/ms) {
+              my $s = $1; $s =~ s/^\s+|\s+$//g;
+              if ($s) { $has_changed = 1; $changed_content = $s; }
+            }
+            if ($unreleased_section =~ /### Fixed(.*?)(?=^###|\Z)/ms) {
+              my $s = $1; $s =~ s/^\s+|\s+$//g;
+              if ($s) { $has_fixed = 1; $fixed_content = $s; }
+            }
+
+            my $new_unreleased = "## [Unreleased]\n\n".
+              "### New\n\n### Changed\n\n### Fixed\n\n";
+
+            my $version_section = "## $ENV{VERSION_NO_V} - $ENV{RELEASE_DATE}\n";
+            $version_section .= "### New\n$new_content\n\n"          if $has_new;
+            $version_section .= "### Changed\n$changed_content\n\n"  if $has_changed;
+            $version_section .= "### Fixed\n$fixed_content\n\n"      if $has_fixed;
+
+            print $before . $new_unreleased . $version_section . $after;
+          ' CHANGES.md
+          echo "Updated CHANGES.md for ${VERSION_NO_V}"
+
+      - name: Sync package.json version
+        env:
+          VERSION_NO_V: ${{ steps.generate_version.outputs.version_no_v }}
+        run: |
+          set -euo pipefail
+          pnpm version "$VERSION_NO_V" --no-git-tag-version --allow-same-version
+          echo "package.json now at $VERSION_NO_V"
+
+      - name: Commit and create tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.generate_version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+          git add CHANGES.md package.json
+          git commit -m "Release ${VERSION}"
+          git tag -a "${VERSION}" -m "Release ${VERSION}"
+
+          git push origin main
+          git push origin "${VERSION}"
+          echo "::notice title=Tagged::Pushed ${VERSION}"
+
+  build:
+    needs: create-tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-tag.outputs.version }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Pack tarball
+        run: pnpm pack --pack-destination ./
+
+      - name: Add build info to summary
+        env:
+          VERSION: ${{ needs.create-tag.outputs.version }}
+        run: |
+          {
+            echo "## Build Artifacts"
+            echo "- dist/rrdnavigator.js"
+            echo "- dist/rrdnavigator.min.js"
+            for f in *.tgz; do
+              echo "- $f ($(du -h "$f" | cut -f1))"
+            done
+          } >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/rrdnavigator.js
+            dist/rrdnavigator.js.map
+            dist/rrdnavigator.min.js
+            dist/rrdnavigator.min.js.map
+            *.tgz
+          retention-days: 90
+
+  create-release:
+    needs: [build, create-tag]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-tag.outputs.version }}
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-artifacts
+          path: ./
+
+      - name: Extract release notes
+        run: |
+          set -e
+          VERSION_NO_V=$(echo "${{ needs.create-tag.outputs.version }}" | sed 's/^v//')
+          perl -e '
+            my $version = $ARGV[0];
+            undef $/;
+            my $content = <STDIN>;
+            if ($content =~ /## \Q$version\E[^\n]*\n(.*?)(?=\n## [0-9]|$)/s) {
+              my $section = $1;
+              $section =~ s/^\s+|\s+$//g;
+              print $section;
+            } else {
+              print "Release $version\n";
+              warn "WARNING: section $version not found in CHANGES.md\n";
+            }
+          ' "$VERSION_NO_V" < CHANGES.md > release_notes_final.md
+          cat release_notes_final.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create-tag.outputs.version }}
+          name: Release ${{ needs.create-tag.outputs.version_no_v }}
+          draft: false
+          prerelease: false
+          body_path: release_notes_final.md
+          fail_on_unmatched_files: true
+          files: |
+            dist/rrdnavigator.js
+            dist/rrdnavigator.js.map
+            dist/rrdnavigator.min.js
+            dist/rrdnavigator.min.js.map
+            *.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-npm:
+    needs: [create-tag, create-release]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.create-tag.outputs.version }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: pnpm publish --no-git-checks --access public --provenance
+
+      - name: Add publish summary
+        env:
+          VERSION_NO_V: ${{ needs.create-tag.outputs.version_no_v }}
+        run: |
+          {
+            echo "## npm Publish"
+            echo "- **Package:** [@oetiker/rrdnavigator@${VERSION_NO_V}](https://www.npmjs.com/package/@oetiker/rrdnavigator/v/${VERSION_NO_V})"
+            echo "- **CDN:** https://cdn.jsdelivr.net/npm/@oetiker/rrdnavigator@${VERSION_NO_V}/dist/rrdnavigator.min.js"
+          } >> $GITHUB_STEP_SUMMARY

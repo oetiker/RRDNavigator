@@ -1,5 +1,5 @@
 {
-  "name": "rrdnavigator",
+  "name": "@oetiker/rrdnavigator",
   "version": "0.1.0",
   "description": "Pure-JS interactive RRD graph navigation as web components.",
   "type": "module",
@@ -8,17 +8,37 @@
   "exports": {
     ".": "./dist/rrdnavigator.js"
   },
-  "files": ["dist/", "README.md", "LICENSE"],
+  "files": ["dist/", "README.md", "LICENSE", "CHANGES.md"],
+  "keywords": [
+    "rrd",
+    "rrdtool",
+    "smokeping",
+    "web-components",
+    "custom-elements",
+    "graph",
+    "monitoring",
+    "pan-zoom"
+  ],
   "license": "MIT",
   "author": "Tobias Oetiker",
-  "repository": "github:oetiker/RRDNavigator",
+  "homepage": "https://github.com/oetiker/RRDNavigator#readme",
+  "bugs": "https://github.com/oetiker/RRDNavigator/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oetiker/RRDNavigator.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "packageManager": "pnpm@9.0.0",
   "scripts": {
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs --watch",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint src test"
+    "lint": "eslint src test",
+    "prepublishOnly": "node scripts/build.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.21.0",

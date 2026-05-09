@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>RRDNavigator + SmokePing</title>
+<style>
+  body { font: 14px sans-serif; max-width: 1300px; margin: 2em auto; padding: 0 1em; }
+  rrd-graph { width: 100%; aspect-ratio: 1300 / 240; border: 1px solid #ddd; }
+</style>
+</head><body>
+<h1>SmokePing target</h1>
+<rrd-graph-nav group="sp" presets="60m,12h,24h,7d,30d" initial-preset="24h"></rrd-graph-nav>
+<rrd-graph
+  group="sp"
+  timezone="Europe/Zurich"
+  template="/smokeping.cgi?displaymode=n&start={{start:smokeping}}&end={{end:smokeping-now}}&target=Local.Localhost&width={{width}}"
+  auto-update></rrd-graph>
+<script type="module" src="../dist/rrdnavigator.js"></script>
+</body></html>

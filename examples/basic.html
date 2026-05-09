@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>RRDNavigator basic</title>
+<style>
+  body { font: 14px sans-serif; max-width: 1100px; margin: 2em auto; padding: 0 1em; }
+  rrd-graph { width: 100%; aspect-ratio: 1100 / 240; border: 1px solid #ddd; }
+</style>
+</head><body>
+<h1>RRDNavigator — basic</h1>
+<rrd-graph
+  template="https://example.com/graph.cgi?start={{start}}&end={{end}}&width={{width}}&height={{height}}&zoom={{zoom}}&rand={{random}}"
+  initial-range="24h"
+  auto-update></rrd-graph>
+<script type="module" src="../dist/rrdnavigator.js"></script>
+</body></html>

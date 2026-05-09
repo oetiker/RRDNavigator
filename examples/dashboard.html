@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>RRDNavigator dashboard</title>
+<style>
+  body { font: 14px sans-serif; max-width: 1300px; margin: 2em auto; padding: 0 1em; }
+  rrd-graph { width: 100%; aspect-ratio: 1300 / 240; border: 1px solid #ddd; }
+  rrd-graph-nav { margin: 1em 0; }
+</style>
+</head><body>
+<h1>Synced dashboard</h1>
+<rrd-graph-nav group="dash1" presets="60m,24h,7d,30d,today,this-week" initial-preset="24h"></rrd-graph-nav>
+<rrd-graph group="dash1" template="https://example.com/cpu.cgi?start={{start}}&end={{end}}&width={{width}}"></rrd-graph>
+<rrd-graph group="dash1" template="https://example.com/mem.cgi?start={{start}}&end={{end}}&width={{width}}"></rrd-graph>
+<script type="module" src="../dist/rrdnavigator.js"></script>
+</body></html>

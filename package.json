@@ -8,7 +8,15 @@
   "exports": {
     ".": "./dist/rrdnavigator.js"
   },
-  "files": ["dist/", "README.md", "LICENSE", "CHANGES.md"],
+  "files": [
+    "dist/rrdnavigator.js",
+    "dist/rrdnavigator.js.map",
+    "dist/rrdnavigator.min.js",
+    "dist/rrdnavigator.min.js.map",
+    "README.md",
+    "LICENSE",
+    "CHANGES.md"
+  ],
   "keywords": [
     "rrd",
     "rrdtool",
@@ -28,8 +36,7 @@
     "url": "git+https://github.com/oetiker/RRDNavigator.git"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "packageManager": "pnpm@9.0.0",
   "scripts": {

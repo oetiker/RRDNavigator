@@ -109,3 +109,38 @@ describe("<rrd-graph> interaction", () => {
     expect(opened[0]).toMatch(/img\.png\?s=1000/);
   });
 });
+
+describe("<rrd-graph> auto-update", () => {
+  beforeEach(() => {
+    _reset();
+    document.body.innerHTML = "";
+  });
+
+  test("auto-update advances start when 'now' is in range", () => {
+    const realNow = Date.now;
+    let nowMs = 1_700_000_000_000;
+    Date.now = () => nowMs;
+    try {
+      const initialStart = Math.floor(nowMs / 1000) - 30;
+      const el = mount(`<rrd-graph template="x" initial-start="${initialStart}" initial-range="60" auto-update style="width:600px;height:200px"></rrd-graph>`);
+      Object.defineProperty(el, "clientWidth", { configurable: true, value: 600 });
+      Object.defineProperty(el, "offsetWidth", { configurable: true, value: 600 });
+      const startBefore = getGroup(el._groupName).start;
+      // advance 'now' by 10s
+      nowMs += 10_000;
+      el._tickAutoUpdate();
+      const startAfter = getGroup(el._groupName).start;
+      expect(startAfter).toBeGreaterThan(startBefore);
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
+  test("auto-update does nothing when 'now' is outside range", () => {
+    const initialStart = 1; // far in the past
+    const el = mount(`<rrd-graph template="x" initial-start="${initialStart}" initial-range="60" auto-update></rrd-graph>`);
+    const before = getGroup(el._groupName).start;
+    el._tickAutoUpdate();
+    expect(getGroup(el._groupName).start).toBe(before);
+  });
+});

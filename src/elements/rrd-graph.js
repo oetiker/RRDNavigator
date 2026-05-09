@@ -72,6 +72,8 @@ class RrdGraph extends HTMLElement {
     this._detachGestures = null;
     this._loading = false;
     this._lastInteraction = 0;
+    this._autoUpdateInterval = null;
+    this._autoUpdateLastNow = 0;
 
     this._img.addEventListener("load", () => {
       this._loading = false;
@@ -94,6 +96,8 @@ class RrdGraph extends HTMLElement {
   disconnectedCallback() {
     if (this._detachGestures) this._detachGestures();
     this._detachGestures = null;
+    if (this._autoUpdateInterval) clearInterval(this._autoUpdateInterval);
+    this._autoUpdateInterval = null;
     if (this._unsub) this._unsub();
     this._unsub = null;
     // Reset so that re-connection re-initializes properly
@@ -170,6 +174,11 @@ class RrdGraph extends HTMLElement {
     }
 
     this._refreshImage();
+
+    if (this.hasAttribute("auto-update") && !this._autoUpdateInterval) {
+      this._autoUpdateLastNow = Math.floor(Date.now() / 1000);
+      this._autoUpdateInterval = setInterval(() => this._tickAutoUpdate(), 1000);
+    }
   }
 
   attributeChangedCallback(name, _old, _val) {
@@ -311,6 +320,28 @@ class RrdGraph extends HTMLElement {
     const ctx = this._canvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, this._canvas.width, this._canvas.height);
+  }
+
+  _tickAutoUpdate() {
+    if (this._lastInteraction && Date.now() - this._lastInteraction < 1500) return;
+    const state = getGroup(this._groupName);
+    if (state.start == null) return;
+    const now = Math.floor(Date.now() / 1000);
+    const end = state.start + state.range;
+    if (now > state.start && now < end) {
+      if (!this._autoUpdateLastNow) {
+        this._autoUpdateLastNow = now;
+        return;
+      }
+      const inc = now - this._autoUpdateLastNow;
+      const w = this.clientWidth || 1;
+      if (state.range / w < inc) {
+        this._autoUpdateLastNow = now;
+        update(this._groupName, { start: state.start + inc }, "set");
+      }
+    } else {
+      this._autoUpdateLastNow = 0;
+    }
   }
 }
 

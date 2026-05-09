@@ -108,20 +108,15 @@ class RrdGraph extends HTMLElement {
   /**
    * Reconcile element state with current attributes.
    *
-   * In happy-dom (and some real browsers during upgrade), connectedCallback
-   * fires before attributes are applied, so attributes may be null at that
-   * point. Each observedAttribute then triggers attributeChangedCallback one
-   * by one. We defer full initialization until the minimum required attributes
-   * (initial-range at minimum) are present so that we do not set up the group
-   * with wrong defaults and then overwrite them.
+   * In happy-dom (and during custom-element upgrade in real browsers),
+   * attributeChangedCallback may fire before all attributes are applied.
+   * Reconcile is idempotent and safe to call multiple times; missing
+   * attributes fall back to their documented defaults.
    */
   _reconcile() {
     if (!this.isConnected) return;
 
     const rangeAttr = this.getAttribute("initial-range");
-    // If initial-range is not yet available, defer — more ACCs will follow.
-    if (rangeAttr == null) return;
-
     const range = parseDuration(rangeAttr, 24 * 3600);
     const start = parseStart(this.getAttribute("initial-start"), range);
     const desiredGroup = this.getAttribute("group") || null;
@@ -150,10 +145,23 @@ class RrdGraph extends HTMLElement {
     // Compile template if not yet compiled or template changed.
     this._compiled = compile(this.getAttribute("template") || "");
 
-    // Initialize group state only if it hasn't been set yet.
+    // Initialize group state if empty, or re-initialize if our previous
+    // init used absent attributes that are now present (happy-dom timing,
+    // and real-browser upgrade ordering).
     const existing = getGroup(this._groupName);
-    if (existing.start == null) {
+    const startAttr = this.getAttribute("initial-start");
+    const rangeNowKnown = rangeAttr != null;
+    const startNowKnown = startAttr != null;
+    const ourInit = this._initFromAttrs;
+    const shouldInit = existing.start == null || (
+      ourInit != null && (
+        (!ourInit.rangeKnown && rangeNowKnown) ||
+        (!ourInit.startKnown && startNowKnown)
+      )
+    );
+    if (shouldInit) {
       update(this._groupName, { start, range, timezone: this.getAttribute("timezone") || undefined }, "set");
+      this._initFromAttrs = { rangeKnown: rangeNowKnown, startKnown: startNowKnown };
     }
 
     // Subscribe if not yet subscribed.

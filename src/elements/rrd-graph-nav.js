@@ -180,6 +180,12 @@ class RrdGraphNav extends HTMLElement {
       }
       this._unsub = subscribe(group, (state) => this._reflectState(state));
     }
+    // _renderButtons() above clears any prior `.active` class because it
+    // rewrites the buttons span. Always re-apply state reflection at the end
+    // of reconcile so re-renders triggered by attribute changes (presets,
+    // initial-preset, etc.) don't leave the nav showing nothing as active.
+    const existing = getGroup(group);
+    if (existing.start != null) this._reflectState(existing);
   }
 
   _tz() { return this.getAttribute("timezone") || undefined; }

@@ -51,5 +51,9 @@
   template="http://localhost:4265/smokeping.cgi?displaymode=a&amp;start={{start:smokeping}}&amp;end={{end:smokeping-now}}&amp;target=Local.Localhost&amp;width={{width}}"
   auto-update&gt;&lt;/rrd-graph&gt;</pre>
 
-<script type="module" src="../dist/rrdnavigator.js"></script>
+<script type="module">
+  // Cache-busting import so iterative reloads pick up rebuilt bundle.
+  const v = (location.search.match(/[?&]v=([^&]+)/) || [, Date.now()])[1];
+  await import(`../dist/rrdnavigator.js?v=${v}`);
+</script>
 </body></html>

@@ -64,7 +64,7 @@ describe("<rrd-graph-nav> presets", () => {
     // panel never appeared because the selector required the explicit
     // attribute value.
     const el = mount('<rrd-graph-nav group="g1" presets="60m"></rrd-graph-nav>');
-    const toggle = [...el.shadowRoot.querySelectorAll("button")].find((b) => b.textContent === "▾");
+    const toggle = [...el.shadowRoot.querySelectorAll("button")].find((b) => b.textContent === "…");
     expect(toggle).toBeTruthy();
     expect(el.hasAttribute("_dt-open")).toBe(false);
     toggle.click();

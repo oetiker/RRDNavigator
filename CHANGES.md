@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### New
 
 ### Changed
+- `<rrd-graph-nav>`: use `…` (ellipsis) instead of `▾` (down arrow) for the date/time toggle button. The down-arrow read as "dropdown" but no list drops; the ellipsis reads as "more options," which matches what the button actually does.
 
 ### Fixed
 - CI: bump `actions/upload-artifact` (v5 → v7), `actions/download-artifact` (v5 → v8), and `softprops/action-gh-release` (v2 → v3) to clear the remaining "Node.js 20 actions are deprecated" warnings on release runs.

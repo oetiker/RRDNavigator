@@ -113,7 +113,7 @@ class RrdGraphNav extends HTMLElement {
 
     this._dtToggle = document.createElement("button");
     this._dtToggle.type = "button";
-    this._dtToggle.textContent = "▾";
+    this._dtToggle.textContent = "…";
     this._dtToggle.title = "Show date/time inputs";
     this._dtToggle.addEventListener("click", () => {
       if (this.hasAttribute("_dt-open")) this.removeAttribute("_dt-open");

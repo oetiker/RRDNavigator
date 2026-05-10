@@ -33,7 +33,7 @@
   <rrd-graph
     group="sp"
     timezone="Europe/Zurich"
-    template="http://localhost:4265/smokeping.cgi?displaymode=a&start={{start:smokeping}}&end={{end:smokeping-now}}&target=Local.Localhost&width={{width}}"
+    template="http://localhost:4265/smokeping.cgi?displaymode=a&start={{start:rrd}}&end={{end:rrd}}&target=Local.Localhost&width={{width}}"
     auto-update></rrd-graph>
 </div>
 
@@ -48,8 +48,17 @@
 <pre>&lt;rrd-graph
   group="sp"
   timezone="Europe/Zurich"
-  template="http://localhost:4265/smokeping.cgi?displaymode=a&amp;start={{start:smokeping}}&amp;end={{end:smokeping-now}}&amp;target=Local.Localhost&amp;width={{width}}"
+  template="http://localhost:4265/smokeping.cgi?displaymode=a&amp;start={{start:rrd}}&amp;end={{end:rrd}}&amp;target=Local.Localhost&amp;width={{width}}"
   auto-update&gt;&lt;/rrd-graph&gt;</pre>
+
+<p><strong>Why <code>rrd</code> not <code>smokeping</code>?</strong> The
+   <code>smokeping</code> formatter renders the timestamp in the chart's
+   <code>timezone</code> attribute. SmokePing's CGI then re-parses that
+   string in the <em>server's</em> local timezone, so user-tz ≠ server-tz
+   silently shifts the requested window. <code>{{start:rrd}}</code> emits
+   an epoch integer, which is timezone-agnostic and always correct.
+   Use <code>{{start:smokeping}}</code> only when the SmokePing server
+   runs in the same timezone you're displaying.</p>
 
 <script type="module">
   // Cache-busting import so iterative reloads pick up rebuilt bundle.

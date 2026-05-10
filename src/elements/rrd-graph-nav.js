@@ -23,10 +23,7 @@ button:hover:not(.active) { background: var(--rrd-button-hover-bg, #eaeaea); }
   align-items: center;
   gap: 0.25em;
 }
-:host([show-datetime="always"]) .dt,
-:host([show-datetime="advanced"][_dt-open]) .dt {
-  display: inline-flex;
-}
+:host([_dt-open]) .dt { display: inline-flex; }
 input[type=date], input[type=time] {
   font: inherit;
   padding: 0.15em 0.3em;

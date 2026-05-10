@@ -57,4 +57,24 @@ describe("<rrd-graph-nav> presets", () => {
     const expectedStart = Math.floor(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate()) / 1000);
     expect(state.start).toBeCloseTo(expectedStart, -1);
   });
+
+  test("date/time toggle adds/removes _dt-open attr regardless of show-datetime attr", () => {
+    // Default mode (no show-datetime attr) is "advanced": toggle should
+    // still drive _dt-open. Regression for a CSS-selector bug where the
+    // panel never appeared because the selector required the explicit
+    // attribute value.
+    const el = mount('<rrd-graph-nav group="g1" presets="60m"></rrd-graph-nav>');
+    const toggle = [...el.shadowRoot.querySelectorAll("button")].find((b) => b.textContent === "▾");
+    expect(toggle).toBeTruthy();
+    expect(el.hasAttribute("_dt-open")).toBe(false);
+    toggle.click();
+    expect(el.hasAttribute("_dt-open")).toBe(true);
+    toggle.click();
+    expect(el.hasAttribute("_dt-open")).toBe(false);
+  });
+
+  test('show-datetime="always" sets _dt-open automatically', () => {
+    const el = mount('<rrd-graph-nav group="g1" presets="60m" show-datetime="always"></rrd-graph-nav>');
+    expect(el.hasAttribute("_dt-open")).toBe(true);
+  });
 });

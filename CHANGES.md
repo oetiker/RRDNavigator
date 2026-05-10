@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 - CI: bump `actions/upload-artifact` (v5 → v7), `actions/download-artifact` (v5 → v8), and `softprops/action-gh-release` (v2 → v3) to clear the remaining "Node.js 20 actions are deprecated" warnings on release runs.
+- `<rrd-graph-nav>`: the date/time toggle button (`▾`) had no effect when `show-datetime` was left at its default. The CSS rule keyed on the explicit attribute value `show-datetime="advanced"`, but the JS treats absent-attribute as advanced mode — so the selector never matched. Simplified the rule to key on the `_dt-open` attribute alone, which the toggle and the explicit modes already drive correctly.
+- `examples/smokeping.html`: switched the URL template from `{{start:smokeping}}` to `{{start:rrd}}` (and likewise `end`). The `smokeping` formatter renders the date in the chart's display timezone, but SmokePing's CGI re-parses it in the *server's* timezone — so when those differ, the request window silently shifts. For Europe/Zurich + a UTC server, the 60m window landed entirely in the future and SmokePing returned an HTML error page instead of an SVG. Epoch (`rrd`) is timezone-agnostic and always correct. The smokeping formatter is still useful for matching-tz deployments and is documented as such.
 
 ## 0.1.1 - 2026-05-09
 ### Changed

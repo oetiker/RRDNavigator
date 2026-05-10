@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+## 0.1.3 - 2026-05-10
 ## 0.1.2 - 2026-05-10
 ### Changed
 - `<rrd-graph-nav>`: use `…` (ellipsis) instead of `▾` (down arrow) for the date/time toggle button. The down-arrow read as "dropdown" but no list drops; the ellipsis reads as "more options," which matches what the button actually does.

@@ -1,6 +1,6 @@
 {
   "name": "@oetiker/rrdnavigator",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Pure-JS interactive RRD graph navigation as web components.",
   "type": "module",
   "main": "dist/rrdnavigator.js",

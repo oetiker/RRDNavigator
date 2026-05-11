@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 ### Fixed
+- `<rrd-graph>`: rapid zoom/pan gestures used to flood the back end with image requests — one per pointer/wheel event — because every `update()` to the shared group state fired an unthrottled `img.src` change in addition to the throttled gesture refresh. Slow back ends like SmokePing's CGI behind Apache would 503 on the trailing request and leave a broken-image icon as the final state. `_refreshImage` now gates on a per-element inflight flag: while a fetch is pending, further calls only mark a `_pendingRefresh`, and the load/error handler flushes it against current state. Identical URLs are also skipped. Outstanding requests are bounded to one per element, so fast scrolls and drags coalesce naturally.
+- `<rrd-graph>`: never emit fractional epoch seconds in rendered URLs. Vertical drag-zoom math produces fractional `range` values, which then leaked into `start`/`end` template substitutions as numbers like `1778474638.6865985`. RRDtool's resolution is 1 s, so the fractional digits were at best ignored and at worst confused servers; `_refreshImage` now floors `start` and `end` before passing them to formatters while keeping the internal state float-precise for math.
 
 ## 0.1.3 - 2026-05-10
 ## 0.1.2 - 2026-05-10

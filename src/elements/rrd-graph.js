@@ -71,18 +71,26 @@ class RrdGraph extends HTMLElement {
     this._unsub = null;
     this._detachGestures = null;
     this._loading = false;
+    this._pendingRefresh = false;
     this._lastInteraction = 0;
     this._autoUpdateInterval = null;
     this._autoUpdateLastNow = 0;
 
-    this._img.addEventListener("load", () => {
+    const settle = () => {
       this._loading = false;
+      if (this._pendingRefresh) {
+        this._pendingRefresh = false;
+        this._refreshImage();
+      }
+    };
+    this._img.addEventListener("load", () => {
+      settle();
       this.dispatchEvent(new CustomEvent("rrd-load", {
         bubbles: true, composed: true, detail: { url: this._img.getAttribute("src") }
       }));
     });
     this._img.addEventListener("error", (e) => {
-      this._loading = false;
+      settle();
       this.dispatchEvent(new CustomEvent("rrd-error", {
         bubbles: true, composed: true, detail: { url: this._img.getAttribute("src"), error: e }
       }));
@@ -103,6 +111,8 @@ class RrdGraph extends HTMLElement {
     // Reset so that re-connection re-initializes properly
     this._groupName = null;
     this._compiled = null;
+    this._loading = false;
+    this._pendingRefresh = false;
   }
 
   /**
@@ -212,11 +222,17 @@ class RrdGraph extends HTMLElement {
     if (state.start == null || state.range == null) return;
     const tz = this.getAttribute("timezone") || state.timezone;
     const now = Math.floor(Date.now() / 1000);
-    const end = state.start + state.range;
-    const isNow = Math.abs(end - now) <= 1;
+    // Floor start/end to integer seconds. RRDtool's resolution is 1s, and
+    // fractional epochs in URLs (which arise from zoom math producing
+    // fractional ranges) are at best noise and at worst confuse the back
+    // end. Keep state.start/range as-is for math precision, but never let
+    // fractional values escape into rendered URLs.
+    const startEpoch = Math.floor(state.start);
+    const endEpoch = Math.floor(state.start + state.range);
+    const isNow = Math.abs(endEpoch - now) <= 1;
     const ctx = {
-      start: { epoch: state.start, isNow: false, tz },
-      end:   { epoch: end, isNow, tz },
+      start: { epoch: startEpoch, isNow: false, tz },
+      end:   { epoch: endEpoch, isNow, tz },
       width:  Math.round(this.clientWidth || this.offsetWidth || 0),
       height: Math.round(this.clientHeight || this.offsetHeight || 0),
       zoom:   zoomOverride ?? 1,
@@ -224,7 +240,20 @@ class RrdGraph extends HTMLElement {
     };
     const url = this._compiled(ctx);
     if (!url) return;
+    // Same URL as currently displayed — no fetch needed.
+    if (url === this._img.getAttribute("src")) return;
+    // A fetch is already in flight. Mark that newer state needs rendering;
+    // when the current request settles (load/error), it will recompute the
+    // URL against then-current state and fire one more request. This bounds
+    // outstanding requests to at most one per element, preventing the burst
+    // floods that make slow back ends (e.g. SmokePing CGI behind Apache)
+    // return 503 on the trailing request and leave a broken-image icon.
+    if (this._loading) {
+      this._pendingRefresh = true;
+      return;
+    }
     this._loading = true;
+    this._pendingRefresh = false;
     this._img.setAttribute("src", url);
   }
 
